@@ -1,6 +1,10 @@
 当レポジトリでは、AWSのAppFlowをAPIから利用するためのサンプルコードを記載します。
 環境は、Python 3.7.6利用し、AWS client libraryとして、boto3を利用します。
 
+## setup
+
+venvフォルダをルートディレクトリに作成して、
+privateフォルダに認証情報をputしておく。
 
 ## 認証について
 上から順に認証情報を検索
