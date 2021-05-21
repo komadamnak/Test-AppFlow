@@ -1,44 +1,35 @@
-
-import os
 import boto3
+from .auth import client
+from .flow import FlowController
+from .setflow import SetFlow
+from .parse import Parser
 
-client = boto3.client('appflow')
-
-
-class Authenticator:
-    pass
-
-
-# response = client.create_connector_profile(
-#     connectorProfileName='appflow-sfdc-test',
-#     connectorType='Salesforce',
-#     connectionMode='Public',
-#     connectorProfileConfig={
-#         'connectorProfileProperties': {
-#             'Salesforce': {
-#                 'instanceUrl': 'https://sohobbinc6-dev-ed.lightning.force.com',
-#                 'isSandboxEnvironment': True
-#             },
-#             # consumer 3MVG95mg0lk4batgXlBquJ4u4AMiZGr0j.C42emQFYbovd1SFOcFsKyTYowRvvQp15n9AdjW1ZEKMNgLz2sY.
-#             # consumerp 3C55241BE04D672F576FE730CD03B933BCC528D77A61A7B8A8A1107AF0B1B9E3
-#         },  # c5QVe7qOmHffliTtZd1pLhHsW,
-#         'connectorProfileCredentials': {
-#             'Salesforce': {
-#                 'oAuthRequest': {
-#                     'authCode': '3MVG95mg0lk4batgXlBquJ4u4AMiZGr0j.C42emQFYbovd1SFOcFsKyTYowRvvQp15n9AdjW1ZEKMNgLz2sY.',
-#                     'redirectUri': 'https://sohobbinc6-dev-ed.appflow.lightning.force.com'
-#                 },
-#                 "clientCredentialsArn": "arn:aws:secretsmanager:3MVG95mg0lk4batgXlBquJ4u4AMiZGr0j.C42emQFYbovd1SFOcFsKyTYowRvvQp15n9AdjW1ZEKMNgLz2sY.:948533486867:3C55241BE04D672F576FE730CD03B933BCC528D77A61A7B8A8A1107AF0B1B9E3"
-#                 # arn:aws:secretsmanager:$region:$account:secret:$secret
-#             }
-#         }
-#     }
-# )
-
-from .flow import Flow, start_flow
-flow_name = 'APIFlow1'
-flow = Flow(flow_name)
-# res = flow.create_flow()
-res = flow.update_flow()
+# flow_name = 'APIflow_filter'
+# profile_name = 'sfde'
+# 't-est-bucket'
+# flow = FlowController(flow_name, profile_name)
+# res = flow.update_flow()
 # res = start_flow(flow_name)
-print(res)
+# print(res)
+
+if __name__ == "__main__":
+    
+    # マッピング用設定ファイルの取得
+    # S3からSalesforceを前提とする。
+    # S3のフォルダプレフィックスとSalesforceオブジェクト名と、
+    # フィールドマッピング対応が記載されている。
+    p = Parser("data/sample.json")
+
+    conf = p.validate()
+    
+    # フロー名、フローの説明
+    setflow = SetFlow("ApiFlowFromScript", "Api Flow", conf)
+
+    # S3のバケット名、S3のフォルダプレフィックス
+    setflow.set_s3("t-est-bucket", "contact")
+
+    # Salesforceのコネクタ名、Salesforceのオブジェクト名
+    setflow.set_sf("sfde", "Contact")
+
+    # フローの作成
+    setflow.create_flow()

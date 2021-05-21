@@ -1,0 +1,14 @@
+{
+    "prefix": "contact",
+    "object": "Contact",
+    "mappings": [
+        {
+            "source": "Name",
+            "destination": "LastName"
+        },
+        {
+            "source": "owner",
+            "destination": "OwnerId"
+        }
+    ]
+}

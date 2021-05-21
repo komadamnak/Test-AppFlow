@@ -8,19 +8,51 @@ def start_flow(flow_name):
     return response
 
 
-class Flow:
-    def __init__(self, flow_name: str) -> None:
+class FlowController:
+    connector_type = 'Salesforce'
+    tasks = []
+
+    def set_map(self, source_field, destination_field):
+        self.tasks.append({
+            'sourceFields': [
+                source_field,
+            ],
+            'destinationField': destination_field,
+            'taskType': 'Map',
+            'taskProperties': {
+                "DESTINATION_DATA_TYPE": "string",
+                "SOURCE_DATA_TYPE": "string"
+            }
+        })
+
+    def __set_projection(self):
+        source_fields = []
+        for task in self.tasks:
+            if task.get('taskType') != "Map":
+                continue
+            source_field = task.get('sourceFields')[0]
+            source_fields.append(source_field)
+
+        self.tasks.insert(0, {
+            "connectorOperator": {
+                "Salesforce": "PROJECTION"
+            },
+            "sourceFields": source_fields,
+            "taskProperties": {
+                # "DATA_TYPE": "datetime",
+                # "LOWER_BOUND": "Lower_Bound_value",
+                # "UPPER_BOUND": "Upper_Bound_value"
+            },
+            "taskType": "Filter"
+        })
+
+    def __init__(self, flow_name: str, bucket_name: str, bucket_prefix: str, profile_name: str, sf_object: str) -> None:
         self.destinationFlowConfigList = [{
-            'connectorType': 'Salesforce',
-            'connectorProfileName': 'sfde',
+            'connectorType': self.connector_type,
+            'connectorProfileName': profile_name,
             'destinationConnectorProperties': {
                 'Salesforce': {
-                    'object': 'Contact',
-                    # 'idFieldNames': [
-                    #     'Id'
-                    #     'AccountId',
-                    #     'Account:ExternalID1__c'
-                    # ],
+                    'object': sf_object,
                     'errorHandlingConfig': {
                         'failOnFirstDestinationError': True,
                         'bucketPrefix': 'errors-contact',
@@ -39,8 +71,8 @@ class Flow:
             'connectorType': 'S3',
             'sourceConnectorProperties': {
                 'S3': {
-                    'bucketName': 't-est-bucket',
-                    'bucketPrefix': 'contact'
+                    'bucketName': bucket_name,
+                    'bucketPrefix': bucket_prefix
                 },
             }
         }
@@ -59,11 +91,24 @@ class Flow:
             #     }
             # },
             {
-                'connectorOperator': {
-                    'S3': 'PROJECTION'
+                "connectorOperator": {
+                    "Salesforce": "PROJECTION"
                 },
+                "sourceFields": [
+                    "owner",
+                    "Name",
+                    "Account:ExternalID1__c",
+                ],
+                "taskProperties": {
+                    # "DATA_TYPE": "datetime",
+                    # "LOWER_BOUND": "Lower_Bound_value",
+                    # "UPPER_BOUND": "Upper_Bound_value"
+                },
+                "taskType": "Filter"
+            },
+            {
                 'sourceFields': [
-                    '名前',
+                    'Name',
                 ],
                 'destinationField': 'LastName',
                 'taskType': 'Map',
@@ -72,9 +117,6 @@ class Flow:
                     "SOURCE_DATA_TYPE": "string"
                 }
             }, {
-                'connectorOperator': {
-                    'S3': 'PROJECTION'
-                },
                 'sourceFields': [
                     'owner',
                 ],
@@ -85,10 +127,39 @@ class Flow:
                     "DESTINATION_DATA_TYPE": "reference",
                     "SOURCE_DATA_TYPE": "string"
                 }
+            }, {
+                "connectorOperator": {
+                    "Salesforce": "VALIDATE_NON_NULL",
+                    "S3": "VALIDATE_NON_NULL"
+                },
+                'sourceFields': [
+                    'Account:ExternalID1__c',
+                ],
+                # 'destinationField': 'AccountId',
+                'destinationField': 'Account__ExternalID1__r',
+                'taskType': 'Validate',
+                # 'taskProperties': {}
+                'taskProperties': {
+                    "DESTINATION_DATA_TYPE": "reference",
+                    "SOURCE_DATA_TYPE": "id"
+                }
+            }, {
+                'sourceFields': [
+                    'Account:ExternalID1__c',
+                ],
+                # 'destinationField': 'AccountId',
+                'destinationField': 'Account__ExternalID1__r',
+                'taskType': 'Map',
+                'taskProperties': {
+                    "DESTINATION_DATA_TYPE": "reference",
+                    "SOURCE_DATA_TYPE": "id",
+                    "DESTINATION_DATA_TYPE": "NULL"
+                }
             }
         ]
 
     def create_flow(self):
+        self.__set_projection()
         response = client.create_flow(
             flowName=self.flowName,
             description=self.description,
@@ -109,39 +180,3 @@ class Flow:
             tasks=self.tasks
         )
         return response
-
-# response = client.create_flow(
-#     flowName='string',
-#     description='created from API',
-#     triggerConfig={
-#         'triggerType': 'OnDemand',
-#     },
-#     sourceFlowConfig={
-#         'connectorType': 'S3',
-#         'connectorProfileName': 'string',
-#         'sourceConnectorProperties': {
-#             'S3': {
-#                 'bucketName': 'string',
-#                 'bucketPrefix': 'string'
-#             },
-#         }
-#     },
-#     destinationFlowConfigList={
-#         'connectorType': 'Salesforce',
-#         'connectorProfileName': 'sfdc',
-#         'destinationConnectorProperties': {
-#             'Salesforce': {
-#                 'object': 'string',
-#                 'idFieldNames': [
-#                     'string',
-#                 ],
-#                 'errorHandlingConfig': {
-#                     'failOnFirstDestinationError': True | False,
-#                     'bucketPrefix': 'string',
-#                     'bucketName': 'string'
-#                 },
-#                 'writeOperationType': 'INSERT' | 'UPSERT' | 'UPDATE'
-#             }
-#         }
-#     }
-# )
